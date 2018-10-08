@@ -14,11 +14,11 @@
 #define DISPLAY_COLUMNS_PORT PORTD
 #define DISPLAY_ROW_PORT PORTA
 #define DELAY_TICK 1
-#define DELAY_FALL 50
+#define DELAY_FALL 20
 
 typedef unsigned char byte;
 
-typedef byte piece[4][4];
+typedef byte Piece[4][4];
 
 enum PixelState {
 	 OFF,
@@ -26,56 +26,56 @@ enum PixelState {
 	 PLAYER
 };
 
-byte PIECE_T[4][4] = {
+Piece PIECE_T = {
 	 {0, 1, 1, 1},
 	 {0, 0, 1, 0},
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0},
 };
 
-byte PIECE_L1[4][4] = {
+Piece PIECE_L1 = {
 	 {0, 1, 0, 0},
 	 {0, 1, 0, 0},
 	 {0, 1, 1, 0},
 	 {0, 0, 0, 0},
 };
 
-byte PIECE_L2[4][4] = {
+Piece PIECE_L2 = {
 	 {0, 0, 1, 0},
 	 {0, 0, 1, 0},
 	 {0, 1, 1, 0},
 	 {0, 0, 0, 0},
 };
 
-byte PIECE_O[4][4] = {
+Piece PIECE_O = {
 	 {0, 1, 1, 0},
 	 {0, 1, 1, 0},
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0},
 };
 
-byte PIECE_S[4][4] = {
+Piece PIECE_S = {
 	 {0, 1, 0, 0},
 	 {0, 1, 1, 0},
 	 {0, 0, 1, 0},
 	 {0, 0, 0, 0},
 };
 
-byte PIECE_Z[4][4] = {
+Piece PIECE_Z = {
 	 {0, 0, 1, 0},
 	 {0, 1, 1, 0},
 	 {0, 1, 0, 0},
 	 {0, 0, 0, 0},
 };
 
-byte PIECE_I[4][4] = {
+Piece PIECE_I = {
 	 {0, 1, 0, 0},
 	 {0, 1, 0, 0},
 	 {0, 1, 0, 0},
 	 {0, 1, 0, 0},
 };
 
-byte PIECE_FULL[4][4] = {
+Piece PIECE_FULL = {
 	 {1, 1, 1, 1},
 	 {1, 1, 1, 1},
 	 {1, 1, 1, 1},
@@ -147,7 +147,7 @@ void fall_one_row() {
 	 }
 }
 
-void insert_piece(byte p[4][4]) {
+void insert_piece(Piece p) {
 	 byte i, j;
 	 byte prefix = 2;
 	 for (i = 0; i < 4; i++) {
@@ -157,7 +157,7 @@ void insert_piece(byte p[4][4]) {
 	 }
 }
 
-void rotate_piece(piece p) {
+void rotate_piece(Piece p) {
 
 }
 
@@ -195,7 +195,7 @@ int main(void) {
 	 DISPLAY_COLUMNS_PORT = 0;
 	 DISPLAY_ROW_PORT = 0;
 	 clear_display();
-	 int i;
+	 byte i;
 
 	 while (1) {
 		  spawn_piece();
