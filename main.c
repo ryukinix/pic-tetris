@@ -1,0 +1,151 @@
+/*
+ * File:   main.c
+ * Author: lerax
+ * Project: Tetris in PIC
+ *
+ * Sun 07 Oct 2018 07:01:09 PM -03
+ */
+
+#include "18f4550.h"
+#include <xc.h>
+#define _XTAL_FREQ 4000000
+#define DISPLAY_ROWS 16
+#define DISPLAY_COLUMNS 8
+#define DISPLAY_COLUMNS_PORT PORTD
+#define DISPLAY_ROW_PORT PORTA
+#define DELAY_TICK 1
+#define DELAY_FALL 50
+
+typedef unsigned char byte;
+
+typedef byte piece[4][4];
+
+byte PIECE_T[4][4] = {
+                 {0, 1, 1, 1},
+                 {0, 0, 1, 0},
+                 {0, 0, 0, 0},
+                 {0, 0, 0, 0},
+};
+
+byte PIECE_L[4][4] = {
+                 {1, 0, 0, 0},
+                 {1, 0, 0, 0},
+                 {1, 1, 0, 0},
+                 {0, 0, 0, 0},
+};
+
+byte PIECE_C[4][4] = {
+                 {0, 1, 1, 0},
+                 {0, 1, 1, 0},
+                 {0, 0, 0, 0},
+                 {0, 0, 0, 0},
+};
+
+byte PIECE_I[4][4] = {
+                      {0, 1, 0, 0},
+                      {0, 1, 0, 0},
+                      {0, 1, 0, 0},
+                      {0, 1, 0, 0},
+};
+
+byte PIECE_FULL[4][4] = {
+                    {1, 1, 1, 1},
+                    {1, 1, 1, 1},
+                    {1, 1, 1, 1},
+                    {1, 1, 1, 1}
+};
+
+
+byte display[16][8];
+
+byte array_to_byte(byte array[DISPLAY_COLUMNS]) {
+    byte result = 0;
+    byte i;
+    for (i = 0; i < DISPLAY_COLUMNS; i++) {
+        result += array[i] << ((DISPLAY_COLUMNS - 1) - i);
+    }
+    return result;
+}
+
+void draw() {
+    byte i;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        DISPLAY_ROW_PORT = i;
+        DISPLAY_COLUMNS_PORT = array_to_byte(display[i]);
+        __delay_ms(DELAY_TICK);
+        DISPLAY_COLUMNS_PORT = 0;
+    }
+}
+
+void set_display(byte value) {
+    byte i, j;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            display[i][j] = value;
+        }
+    }
+}
+
+void fill_display() {
+    set_display(1);
+}
+
+void clear_display() {
+    set_display(0);
+}
+
+// a1 <- a2
+void copy_array(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
+    byte i;
+    for (i = 0; i < DISPLAY_COLUMNS; i++) {
+        a1[i] = a2[i];
+    }
+}
+
+void fall_one_row() {
+    byte last_row[DISPLAY_COLUMNS];
+    byte current_row[DISPLAY_COLUMNS];
+    byte zero_row[DISPLAY_COLUMNS] = {0, 0, 0, 0, 0, 0, 0, 0};
+    byte i;
+    copy_array(last_row, display[0]);
+    copy_array(display[0], zero_row);
+    for (i = 1; i < DISPLAY_ROWS; i++) {
+        copy_array(current_row, display[i]);
+        copy_array(display[i], last_row);
+        copy_array(last_row, current_row);
+    }
+
+    for (i = 0; i < DELAY_FALL; i++) {
+        draw();
+    }
+}
+
+void insert_piece(byte p[4][4]) {
+    byte i, j;
+    byte prefix = 2;
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            display[i][j+prefix] = p[i][j];
+        }
+    }
+}
+
+void rotate_piece(piece p) {
+
+}
+
+int main(void) {
+    TRISD = 0;
+    TRISA = 0xf0;
+    DISPLAY_COLUMNS_PORT = 0;
+    DISPLAY_ROW_PORT = 0;
+    clear_display();
+    insert_piece(PIECE_L);
+
+    while (1) {
+        draw();
+        fall_one_row();
+    }
+
+    return 0;
+}
