@@ -1,2 +1,16 @@
 *.pdsbak
 *.workspace
+*.as
+*.cmf
+*.elf
+*.hex
+*.hxl
+*.p1
+*.pre
+*.sdb
+*.as
+*.lst
+*.obj
+*.rlf
+*.d
+*.sym
