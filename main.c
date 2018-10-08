@@ -27,18 +27,39 @@ byte PIECE_T[4][4] = {
                  {0, 0, 0, 0},
 };
 
-byte PIECE_L[4][4] = {
-                 {1, 0, 0, 0},
-                 {1, 0, 0, 0},
-                 {1, 1, 0, 0},
+byte PIECE_L1[4][4] = {
+                 {0, 1, 0, 0},
+                 {0, 1, 0, 0},
+                 {0, 1, 1, 0},
                  {0, 0, 0, 0},
 };
 
-byte PIECE_C[4][4] = {
+byte PIECE_L2[4][4] = {
+                       {0, 0, 1, 0},
+                       {0, 0, 1, 0},
+                       {0, 1, 1, 0},
+                       {0, 0, 0, 0},
+};
+
+byte PIECE_O[4][4] = {
                  {0, 1, 1, 0},
                  {0, 1, 1, 0},
                  {0, 0, 0, 0},
                  {0, 0, 0, 0},
+};
+
+byte PIECE_S[4][4] = {
+                      {0, 1, 0, 0},
+                      {0, 1, 1, 0},
+                      {0, 0, 1, 0},
+                      {0, 0, 0, 0},
+};
+
+byte PIECE_Z[4][4] = {
+                      {0, 0, 1, 0},
+                      {0, 1, 1, 0},
+                      {0, 1, 0, 0},
+                      {0, 0, 0, 0},
 };
 
 byte PIECE_I[4][4] = {
@@ -140,11 +161,38 @@ int main(void) {
     DISPLAY_COLUMNS_PORT = 0;
     DISPLAY_ROW_PORT = 0;
     clear_display();
-    insert_piece(PIECE_L);
+    insert_piece(PIECE_S);
+    int i, counter = 0;
 
     while (1) {
         draw();
-        fall_one_row();
+        for (i = 0; i < DISPLAY_COLUMNS; i++) {
+            fall_one_row();
+        }
+        switch (counter % 7) {
+        case 0:
+            insert_piece(PIECE_I);
+            break;
+        case 1:
+            insert_piece(PIECE_T);
+            break;
+        case 2:
+            insert_piece(PIECE_S);
+            break;
+        case 3:
+            insert_piece(PIECE_L1);
+            break;
+        case 4:
+            insert_piece(PIECE_Z);
+            break;
+        case 5:
+            insert_piece(PIECE_O);
+            break;
+        case 6:
+            insert_piece(PIECE_L2);
+            break;
+        }
+        counter++;
     }
 
     return 0;
