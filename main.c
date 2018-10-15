@@ -15,7 +15,7 @@
 #define DISPLAY_COLUMNS_PORT PORTD
 #define DISPLAY_ROW_PORT PORTA
 #define DELAY_TICK 1
-#define DELAY_FALL 10
+#define DELAY_FALL 20
 
 
 typedef unsigned char byte;
@@ -86,7 +86,9 @@ Piece PIECE_FULL = {
 };
 
 
-byte display[DISPLAY_ROWS][DISPLAY_COLUMNS];
+static byte display[DISPLAY_ROWS][DISPLAY_COLUMNS];
+static int move_to_left = 0;
+static int move_to_right = 0;
 
 byte array_to_byte(byte array[DISPLAY_COLUMNS]) {
     byte result = 0;
@@ -249,50 +251,48 @@ byte check_right_collision(void) {
     return 0;
 }
 
-// FIXME: BUG FROM HELL
-void move_player(int x, int y) {
+void move_player_to_left(void) {
     int i, j;
-    byte new_display[DISPLAY_ROWS][DISPLAY_COLUMNS];
     for (i = 0; i < DISPLAY_ROWS; i++) {
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            byte lower_condition = i+y >= 0 && j+x >= 0;
-            byte upper_condition = i+y < DISPLAY_ROWS && j+x < DISPLAY_COLUMNS;
-            byte is_player = display[i][j] == C || display[i][j] == P;
-            if (lower_condition && upper_condition && is_player) {
-                new_display[i+y][j+x] = display[i][j];
+            if (j-1 >= 0 && (display[i][j] == C || display[i][j] == P)) {
+                display[i][j-1] = display[i][j];
+                display[i][j] = 0;
             } else {
-                new_display[i][j] = display[i][j];
+                display[i][j] = display[i][j];
             }
         }
     }
-
-    for (i = 0; i < DISPLAY_ROWS; i++) {
-        for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            display[i][j] = new_display[i][j];
-        }
-    }
-}
-
-void move_player_to_left(void) {
-    move_player(-1, 0);
 }
 
 void move_player_to_right(void) {
-    move_player(+1, 0);
+    int i, j;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        byte new_row[DISPLAY_COLUMNS];
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            new_row[j] = OFF;
+        }
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            if (j+1 < DISPLAY_COLUMNS && (display[i][j] == C || display[i][j] == P)) {
+                new_row[j+1] = display[i][j];
+            } else if (new_row[j] != C && new_row[j] != P) {
+                new_row[j] = display[i][j];
+            }
+        }
+
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            display[i][j] = new_row[j];
+        }
+    }
 }
 
 void interrupt isr(void) {
     if (INT0F) { // left button
         INT0F = 0;
-        if (!check_left_collision()) {
-            move_player_to_left();
-        }
+        move_to_left = 1;
     } else if (INT1F) { // right button
         INT1F = 0;
-        if (!check_right_collision()) {
-            move_player_to_right();
-        }
-
+        move_to_right = 1;
     }
 }
 
@@ -309,15 +309,28 @@ int main(void) {
     DISPLAY_ROW_PORT = 0;
     clear_display();
 
-    byte i;
     spawn_piece();
     while (1) {
+        // main logic
         draw();
         if (check_fall_collision()) {
             freeze_blocks();
             spawn_piece();
         } else {
             fall_one_row();
+        }
+
+        // buttons
+        if (move_to_left) {
+            if (!check_left_collision()) {
+                move_player_to_left();
+            }
+            move_to_left = 0;
+        } else if (move_to_right) {
+            if (!check_right_collision()) {
+                move_player_to_right();
+            }
+            move_to_right = 0;
         }
     }
 
