@@ -240,11 +240,59 @@ void spawn_piece() {
     }
     counter++;
 }
+
+byte check_left_collision(void) {
+    return 0;
+}
+
+byte check_right_collision(void) {
+    return 0;
+}
+
+void move_player(byte x, byte y) {
+    byte i, j;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            if (x+j >= 0 && i+y >= 0 && (display[i][j] == P || display[i][j] == C)) {
+                display[i+y][j+x] = display[i][j];
+                display[i][j] = OFF;
+            }
+        }
+    }
+}
+
+void move_player_to_left(void) {
+    move_player(-1, 0);
+}
+
+void move_player_to_right(void) {
+    move_player(+1, 0);
+}
+
+void interrupt isr(void) {
+    if (INT0F) { // left button
+        INT0F = 0;
+        if (!check_left_collision()) {
+            move_player_to_left();
+        }
+    } else if (INT1F) { // right button
+        INT1F = 0;
+        if (!check_right_collision()) {
+            move_player_to_right();
+        }
+
+    }
 }
 
 int main(void) {
     TRISD = 0;
     TRISA = 0xf0;
+    TRISBbits.RB0 = 1;
+    TRISBbits.RB1 = 1;
+    INTCONbits.INT0IE = 1;  // Habilita interrupção INT0
+    INTCON3bits.INT1IE = 1; // Habilita interrupção INT1
+    INTCONbits.GIE = 1;     // Habilita interrupções globalmente
+    INTCONbits.PEIE = 1;    // Habilita int. dos periféricos
     DISPLAY_COLUMNS_PORT = 0;
     DISPLAY_ROW_PORT = 0;
     clear_display();
