@@ -136,6 +136,14 @@ void copy_player(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
     }
 }
 
+void copy_array(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
+    byte i;
+    for (i = 0; i < DISPLAY_COLUMNS; i++) {
+        a1[i] = a2[i];
+    }
+}
+
+
 int check_collision(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
     byte i;
     for (i = 0; i < DISPLAY_COLUMNS; i++) {
@@ -186,6 +194,38 @@ void fall_one_row() {
 
 }
 
+int full_row(byte row[DISPLAY_COLUMNS]) {
+    int j;
+    for (j = 0; j < DISPLAY_COLUMNS; j++) {
+        if (row[j] == OFF) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+void fall_row_until(int n) {
+    byte last_row[DISPLAY_COLUMNS];
+    byte current_row[DISPLAY_COLUMNS];
+    byte zero_row[DISPLAY_COLUMNS] = {0, 0, 0, 0, 0, 0, 0, 0};
+    byte i;
+    copy_array(last_row, display[0]);
+    copy_array(display[0], zero_row);
+    for (i = 1; i <= n; i++) {
+        copy_array(current_row, display[i]);
+        copy_array(display[i], last_row);
+        copy_array(last_row, current_row);
+    }
+}
+
+void clean_full_rows() {
+    int i;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        if (full_row(display[i])) {
+            fall_row_until(i);
+        }
+    }
+}
 byte check_fall_collision() {
     byte i;
     for (i = 1; i < DISPLAY_ROWS; i++) {
@@ -208,6 +248,11 @@ void insert_piece(Piece p) {
         }
     }
 }
+
+int check_game_over() {
+    // check if game is over
+}
+
 
 void rotate_piece(Piece p) {
 
@@ -326,6 +371,26 @@ void interrupt isr(void) {
     }
 }
 
+void start_game() {
+    clear_display();
+
+    spawn_piece();
+    while (1) {
+        // main logic
+        draw();
+        if (check_fall_collision()) {
+            freeze_blocks();
+            clean_full_rows();
+            if (check_game_over()) {
+                clear_display();
+            }
+            spawn_piece();
+        } else {
+            fall_one_row();
+        }
+    }
+}
+
 int main(void) {
     TRISD = 0;
     TRISA = 0xf0;
@@ -337,19 +402,7 @@ int main(void) {
     INTCONbits.PEIE = 1;    // Habilita int. dos periféricos
     DISPLAY_COLUMNS_PORT = 0;
     DISPLAY_ROW_PORT = 0;
-    clear_display();
 
-    spawn_piece();
-    while (1) {
-        // main logic
-        draw();
-        if (check_fall_collision()) {
-            freeze_blocks();
-            spawn_piece();
-        } else {
-            fall_one_row();
-        }
-    }
-
+    start_game();
     return 0;
 }
