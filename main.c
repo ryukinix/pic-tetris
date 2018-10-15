@@ -15,7 +15,7 @@
 #define DISPLAY_COLUMNS_PORT PORTD
 #define DISPLAY_ROW_PORT PORTA
 #define DELAY_TICK 1
-#define DELAY_FALL 20
+#define DELAY_FALL 15
 
 
 typedef unsigned char byte;
@@ -250,7 +250,16 @@ void insert_piece(Piece p) {
 }
 
 int check_game_over() {
-    // check if game is over
+    int i, j;
+    byte prefix = 2;
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            if (display[i][j+prefix] == ON) {
+                return 1;
+            }
+        }
+    }
+    return 0;
 }
 
 
