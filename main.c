@@ -284,8 +284,58 @@ void game_over_animation() {
     }
 }
 
-void rotate_piece(Piece p) {
+void rotate_player() {
+    byte player_pieces[4][2];
+    byte window[4][4];
+    int piece_count = 0;
+    int i, j;
 
+    // initialize window and window_coordinantes to 0
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            window[i][j] = 0;
+        }
+    }
+
+    // search for player pieces
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            if (display[i][j] == P) {
+                player_pieces[piece_count][0] = i;
+                player_pieces[piece_count][1] = j;
+                piece_count++;
+            }
+        }
+    }
+
+    // get window of pieces {4,4}
+    int min_i = player_pieces[0][0];
+    int min_j = player_pieces[0][1];
+    for (i = 1; i < 4; i++) {
+        if (player_pieces[i][0] < min_i) {
+            min_i = player_pieces[i][0];
+        }
+        if (player_pieces[i][1] < min_j) {
+            min_j = player_pieces[i][1];
+        }
+    }
+
+
+    for (i = 0; i < 4; i++) {
+        int p_i = player_pieces[i][0];
+        int p_j = player_pieces[i][1];
+        int w_i = p_i - min_i;
+        int w_j = p_j - min_j;
+        window[w_i][w_j] = display[p_i][p_j];
+    }
+
+
+    // write window back transposed
+    for (i = 0; i < 4; i++) {
+        for (j = 0; j < 4; j++) {
+            display[i+min_i][j+min_j] = window[j][i];
+        }
+    }
 }
 
 void spawn_piece() {
@@ -401,6 +451,9 @@ void interrupt isr(void) {
         if (!check_right_collision()) {
             move_player_to_right();
         }
+    } else if (INT2F) {
+        INT2F = 0;
+        rotate_player();
     }
 }
 
@@ -432,6 +485,7 @@ int main(void) {
     TRISBbits.RB1 = 1;
     INTCONbits.INT0IE = 1;  // Habilita interrupção INT0
     INTCON3bits.INT1IE = 1; // Habilita interrupção INT1
+    INTCON3bits.INT2IE = 1; // Habilitar interrupção INT2
     INTCONbits.GIE = 1;     // Habilita interrupções globalmente
     INTCONbits.PEIE = 1;    // Habilita int. dos periféricos
     DISPLAY_COLUMNS_PORT = 0;
