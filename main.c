@@ -244,10 +244,38 @@ void spawn_piece() {
 }
 
 byte check_left_collision(void) {
+    int i, j;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            int is_player = display[i][j] == P || display[i][j] == C;
+            if (is_player) {
+                if (j == 0) {
+                    return 1;
+                } else if (display[i][j-1] == ON) {
+                    return 1;
+                }
+            }
+        }
+    }
+
     return 0;
 }
 
 byte check_right_collision(void) {
+    int i, j;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            int is_player = display[i][j] == P || display[i][j] == C;
+            if (is_player) {
+                if (j == DISPLAY_COLUMNS - 1) {
+                    return 1;
+                } else if (display[i][j+1] == ON) {
+                    return 1;
+                }
+            }
+        }
+    }
+
     return 0;
 }
 
