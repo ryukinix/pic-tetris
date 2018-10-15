@@ -87,8 +87,6 @@ Piece PIECE_FULL = {
 
 
 static byte display[DISPLAY_ROWS][DISPLAY_COLUMNS];
-static int move_to_left = 0;
-static int move_to_right = 0;
 
 byte array_to_byte(byte array[DISPLAY_COLUMNS]) {
     byte result = 0;
@@ -317,10 +315,14 @@ void move_player_to_right(void) {
 void interrupt isr(void) {
     if (INT0F) { // left button
         INT0F = 0;
-        move_to_left = 1;
+        if (!check_left_collision()) {
+            move_player_to_left();
+        }
     } else if (INT1F) { // right button
         INT1F = 0;
-        move_to_right = 1;
+        if (!check_right_collision()) {
+            move_player_to_right();
+        }
     }
 }
 
@@ -346,19 +348,6 @@ int main(void) {
             spawn_piece();
         } else {
             fall_one_row();
-        }
-
-        // buttons
-        if (move_to_left) {
-            if (!check_left_collision()) {
-                move_player_to_left();
-            }
-            move_to_left = 0;
-        } else if (move_to_right) {
-            if (!check_right_collision()) {
-                move_player_to_right();
-            }
-            move_to_right = 0;
         }
     }
 
