@@ -366,6 +366,11 @@ void move_player_to_right(void) {
     }
 }
 
+/**
+ * DANGER: There is a re-entrant problem in this routine.
+ *         move_player_to_{left, right} procedures changes the
+ *         global variable display (which is changed by other procedures)
+ */
 void interrupt isr(void) {
     if (INT0F) { // left button
         INT0F = 0;
