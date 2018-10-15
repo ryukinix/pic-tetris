@@ -15,7 +15,7 @@
 #define DISPLAY_COLUMNS_PORT PORTD
 #define DISPLAY_ROW_PORT PORTA
 #define DELAY_TICK 1
-#define DELAY_FALL 20
+#define DELAY_FALL 10
 
 
 typedef unsigned char byte;
@@ -86,7 +86,7 @@ Piece PIECE_FULL = {
 };
 
 
-byte display[16][8];
+byte display[DISPLAY_ROWS][DISPLAY_COLUMNS];
 
 byte array_to_byte(byte array[DISPLAY_COLUMNS]) {
     byte result = 0;
@@ -150,7 +150,7 @@ void freeze_blocks() {
     byte i, j;
     for (i = 0; i < DISPLAY_ROWS; i++) {
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (display[i][j] == P || display[i][j] == C) {
+            if (display[i][j] != OFF) {
                 display[i][j] = ON;
             }
         }
@@ -249,14 +249,26 @@ byte check_right_collision(void) {
     return 0;
 }
 
-void move_player(byte x, byte y) {
-    byte i, j;
+// FIXME: BUG FROM HELL
+void move_player(int x, int y) {
+    int i, j;
+    byte new_display[DISPLAY_ROWS][DISPLAY_COLUMNS];
     for (i = 0; i < DISPLAY_ROWS; i++) {
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (x+j >= 0 && i+y >= 0 && (display[i][j] == P || display[i][j] == C)) {
-                display[i+y][j+x] = display[i][j];
-                display[i][j] = OFF;
+            byte lower_condition = i+y >= 0 && j+x >= 0;
+            byte upper_condition = i+y < DISPLAY_ROWS && j+x < DISPLAY_COLUMNS;
+            byte is_player = display[i][j] == C || display[i][j] == P;
+            if (lower_condition && upper_condition && is_player) {
+                new_display[i+y][j+x] = display[i][j];
+            } else {
+                new_display[i][j] = display[i][j];
             }
+        }
+    }
+
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            display[i][j] = new_display[i][j];
         }
     }
 }
