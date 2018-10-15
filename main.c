@@ -88,6 +88,14 @@ Piece PIECE_FULL = {
 
 static byte display[DISPLAY_ROWS][DISPLAY_COLUMNS];
 
+void disable_interrupt(void) {
+    INTCONbits.GIE = 0;
+}
+
+void enable_interrupt(void) {
+    INTCONbits.GIE = 1;
+}
+
 byte array_to_byte(byte array[DISPLAY_COLUMNS]) {
     byte result = 0;
     byte i;
@@ -180,6 +188,7 @@ void fall_one_row() {
     byte current_row[DISPLAY_COLUMNS];
     byte zero_row[DISPLAY_COLUMNS] = {0, 0, 0, 0, 0, 0, 0, 0};
     byte i;
+    disable_interrupt();
     copy_player(last_row, display[0]);
     copy_player(display[0], zero_row);
     for (i = 1; i < DISPLAY_ROWS; i++) {
@@ -187,6 +196,7 @@ void fall_one_row() {
         copy_player(display[i], last_row);
         copy_player(last_row, current_row);
     }
+    enable_interrupt();
 
     for (i = 0; i < DELAY_FALL; i++) {
         draw();
