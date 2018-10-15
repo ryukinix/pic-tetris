@@ -27,11 +27,10 @@ enum PixelState {
     OFF,
     ON,
     P, // player
-    C, // center
 };
 
 Piece PIECE_T = {
-    {0, P, C, P},
+    {0, P, P, P},
     {0, 0, P, 0},
     {0, 0, 0, 0},
     {0, 0, 0, 0},
@@ -39,14 +38,14 @@ Piece PIECE_T = {
 
 Piece PIECE_L1 = {
     {0, P, 0, 0},
-    {0, C, 0, 0},
+    {0, P, 0, 0},
     {0, P, P, 0},
     {0, 0, 0, 0},
 };
 
 Piece PIECE_L2 = {
     {0, 0, P, 0},
-    {0, 0, C, 0},
+    {0, 0, P, 0},
     {0, P, P, 0},
     {0, 0, 0, 0},
 };
@@ -60,21 +59,21 @@ Piece PIECE_O = {
 
 Piece PIECE_S = {
     {0, P, 0, 0},
-    {0, C, P, 0},
+    {0, P, P, 0},
     {0, 0, P, 0},
     {0, 0, 0, 0},
 };
 
 Piece PIECE_Z = {
     {0, 0, P, 0},
-    {0, P, C, 0},
+    {0, P, P, 0},
     {0, P, 0, 0},
     {0, 0, 0, 0},
 };
 
 Piece PIECE_I = {
     {0, P, 0, 0},
-    {0, C, 0, 0},
+    {0, P, 0, 0},
     {0, P, 0, 0},
     {0, P, 0, 0},
 };
@@ -148,7 +147,7 @@ void copy_array(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
 int check_collision(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
     byte i;
     for (i = 0; i < DISPLAY_COLUMNS; i++) {
-        if ((a1[i] == C || a1[i] == P) && a2[i] == ON) {
+        if (a1[i] == P && a2[i] == ON) {
             return 1;
         }
     }
@@ -169,7 +168,7 @@ void freeze_blocks() {
 int has_player(byte row[DISPLAY_COLUMNS]) {
     byte i;
     for (i = 0; i < DISPLAY_COLUMNS; i++) {
-        if (row[i] == P || row[i] == C) {
+        if (row[i] == P) {
             return 1;
         }
     }
@@ -311,8 +310,7 @@ byte check_left_collision(void) {
     int i, j;
     for (i = 0; i < DISPLAY_ROWS; i++) {
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            int is_player = display[i][j] == P || display[i][j] == C;
-            if (is_player) {
+            if (display[i][j] == P) {
                 if (j == 0) {
                     return 1;
                 } else if (display[i][j-1] == ON) {
@@ -329,8 +327,7 @@ byte check_right_collision(void) {
     int i, j;
     for (i = 0; i < DISPLAY_ROWS; i++) {
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            int is_player = display[i][j] == P || display[i][j] == C;
-            if (is_player) {
+            if (display[i][j] == P) {
                 if (j == DISPLAY_COLUMNS - 1) {
                     return 1;
                 } else if (display[i][j+1] == ON) {
@@ -347,7 +344,7 @@ void move_player_to_left(void) {
     int i, j;
     for (i = 0; i < DISPLAY_ROWS; i++) {
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (j-1 >= 0 && (display[i][j] == C || display[i][j] == P)) {
+            if (j-1 >= 0 && display[i][j] == P) {
                 display[i][j-1] = display[i][j];
                 display[i][j] = 0;
             } else {
@@ -365,9 +362,9 @@ void move_player_to_right(void) {
             new_row[j] = OFF;
         }
         for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (j+1 < DISPLAY_COLUMNS && (display[i][j] == C || display[i][j] == P)) {
+            if (j+1 < DISPLAY_COLUMNS && display[i][j] == P) {
                 new_row[j+1] = display[i][j];
-            } else if (new_row[j] != C && new_row[j] != P) {
+            } else if (new_row[j] != P) {
                 new_row[j] = display[i][j];
             }
         }
