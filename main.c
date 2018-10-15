@@ -15,6 +15,7 @@
 #define DISPLAY_COLUMNS_PORT PORTD
 #define DISPLAY_ROW_PORT PORTA
 #define DELAY_TICK 1
+#define DELAY_TICK_GAME_OVER 5
 #define DELAY_FALL 15
 
 
@@ -262,6 +263,17 @@ int check_game_over() {
     return 0;
 }
 
+void game_over_animation() {
+    int i, j;
+
+    for(i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            display[i][j] = ON;
+            draw();
+            __delay_ms(DELAY_TICK_GAME_OVER);
+        }
+    }
+}
 
 void rotate_piece(Piece p) {
 
@@ -396,6 +408,7 @@ void start_game() {
             freeze_blocks();
             clean_full_rows();
             if (check_game_over()) {
+                game_over_animation();
                 clear_display();
             }
             spawn_piece();
