@@ -23,56 +23,57 @@ typedef byte Piece[4][4];
 enum PixelState {
 	 OFF,
 	 ON,
-	 PLAYER
+	 P, // player
+     C, // center
 };
 
 Piece PIECE_T = {
-	 {0, 1, 1, 1},
-	 {0, 0, 1, 0},
+	 {0, P, C, P},
+	 {0, 0, P, 0},
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0},
 };
 
 Piece PIECE_L1 = {
-	 {0, 1, 0, 0},
-	 {0, 1, 0, 0},
-	 {0, 1, 1, 0},
+	 {0, P, 0, 0},
+	 {0, C, 0, 0},
+	 {0, P, P, 0},
 	 {0, 0, 0, 0},
 };
 
 Piece PIECE_L2 = {
-	 {0, 0, 1, 0},
-	 {0, 0, 1, 0},
-	 {0, 1, 1, 0},
+	 {0, 0, P, 0},
+	 {0, 0, C, 0},
+	 {0, P, P, 0},
 	 {0, 0, 0, 0},
 };
 
 Piece PIECE_O = {
-	 {0, 1, 1, 0},
-	 {0, 1, 1, 0},
+	 {0, P, P, 0},
+	 {0, P, P, 0},
 	 {0, 0, 0, 0},
 	 {0, 0, 0, 0},
 };
 
 Piece PIECE_S = {
-	 {0, 1, 0, 0},
-	 {0, 1, 1, 0},
-	 {0, 0, 1, 0},
+	 {0, P, 0, 0},
+	 {0, C, P, 0},
+	 {0, 0, P, 0},
 	 {0, 0, 0, 0},
 };
 
 Piece PIECE_Z = {
-	 {0, 0, 1, 0},
-	 {0, 1, 1, 0},
-	 {0, 1, 0, 0},
+	 {0, 0, P, 0},
+	 {0, P, C, 0},
+	 {0, P, 0, 0},
 	 {0, 0, 0, 0},
 };
 
 Piece PIECE_I = {
-	 {0, 1, 0, 0},
-	 {0, 1, 0, 0},
-	 {0, 1, 0, 0},
-	 {0, 1, 0, 0},
+	 {0, P, 0, 0},
+	 {0, C, 0, 0},
+	 {0, P, 0, 0},
+	 {0, P, 0, 0},
 };
 
 Piece PIECE_FULL = {
@@ -89,7 +90,9 @@ byte array_to_byte(byte array[DISPLAY_COLUMNS]) {
 	 byte result = 0;
 	 byte i;
 	 for (i = 0; i < DISPLAY_COLUMNS; i++) {
-		  result += array[i] << ((DISPLAY_COLUMNS - 1) - i);
+         if (array[i] != OFF) {
+             result += 1 << ((DISPLAY_COLUMNS - 1) - i);
+         }
 	 }
 	 return result;
 }
@@ -122,11 +125,44 @@ void clear_display() {
 }
 
 // a1 <- a2
-void copy_array(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
+void copy_player(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
 	 byte i;
 	 for (i = 0; i < DISPLAY_COLUMNS; i++) {
-		  a1[i] = a2[i];
+         if (a1[i] != ON && a2[i] != ON) {
+             a1[i] = a2[i];
+         }
 	 }
+}
+
+int check_collision(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
+    byte i;
+    for (i = 0; i < DISPLAY_COLUMNS; i++) {
+        if ((a1[i] == P || a1[i] == C ) && a2[i] == ON) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void freeze_blocks() {
+    byte i, j;
+    for (i = 0; i < DISPLAY_ROWS; i++) {
+        for (j = 0; j < DISPLAY_COLUMNS; j++) {
+            if (display[i][j] == P || display[i][j] == C) {
+                display[i][j] = ON;
+            }
+        }
+    }
+}
+
+int has_player(byte a[DISPLAY_COLUMNS]) {
+    byte i;
+    for (i = 0; i < DISPLAY_COLUMNS; i++) {
+        if (a[i] == P || a[i] == C) {
+            return 1;
+        }
+    }
+    return 0;
 }
 
 void fall_one_row() {
@@ -134,17 +170,31 @@ void fall_one_row() {
 	 byte current_row[DISPLAY_COLUMNS];
 	 byte zero_row[DISPLAY_COLUMNS] = {0, 0, 0, 0, 0, 0, 0, 0};
 	 byte i;
-	 copy_array(last_row, display[0]);
-	 copy_array(display[0], zero_row);
+	 copy_player(last_row, display[0]);
+	 copy_player(display[0], zero_row);
 	 for (i = 1; i < DISPLAY_ROWS; i++) {
-		  copy_array(current_row, display[i]);
-		  copy_array(display[i], last_row);
-		  copy_array(last_row, current_row);
+         copy_player(current_row, display[i]);
+         copy_player(display[i], last_row);
+         copy_player(last_row, current_row);
 	 }
 
 	 for (i = 0; i < DELAY_FALL; i++) {
 		  draw();
 	 }
+
+}
+
+byte check_display_collision() {
+    byte i;
+    for (i = 1; i < DISPLAY_ROWS; i++) {
+        if ((i + 1) == DISPLAY_ROWS && has_player(display[i])) {
+            return 1;
+        } else if (check_collision(display[i], display[i + 1])) {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 void insert_piece(Piece p) {
@@ -162,7 +212,7 @@ void rotate_piece(Piece p) {
 }
 
 void spawn_piece() {
-	 static int counter = 0;
+	 static int counter = 1;
 	 switch (counter % 7) {
 	 case 0:
 		  insert_piece(PIECE_I);
@@ -197,12 +247,15 @@ int main(void) {
 	 clear_display();
 	 byte i;
 
+	 spawn_piece();
 	 while (1) {
-		  spawn_piece();
 		  draw();
-		  for (i = 0; i < DISPLAY_COLUMNS; i++) {
-			   fall_one_row();
-		  }
+          if (check_display_collision()) {
+              freeze_blocks();
+              spawn_piece();
+          } else {
+              fall_one_row();
+          }
 	 }
 
 	 return 0;
