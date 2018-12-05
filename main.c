@@ -1,6 +1,6 @@
 /*
  * File:   main.c
- * Author: lerax
+ * Author: lerax and mmssouza
  * Project: Tetris in PIC
  *
  * Sun 07 Oct 2018 07:01:09 PM -03
@@ -131,13 +131,14 @@ void clear_display() {
 
 // a1 <- a2
 void copy_player(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
-  for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
-    if (a2[i] == P)
-      a1[i] = a2[i];
-  }
+    for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
+        if (a2[i] == P) {
+            a1[i] = a2[i];
+        }
+    }
 }
 
-void copy_array(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
+void copy_array(byte volatile a1[DISPLAY_COLUMNS], byte volatile a2[DISPLAY_COLUMNS]) {
     for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
         a1[i] = a2[i];
     }
@@ -145,105 +146,69 @@ void copy_array(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
 
 
 byte check_collision() {
-  byte collision = COLLISION_NONE;
+    byte collision = COLLISION_NONE;
 
     for (int i = p_i;i < p_i + BLOCK_SIZE;i++) {
-      for (int j = p_j;j <  p_j + BLOCK_SIZE; j++) {
-       if (i < DISPLAY_ROWS )
-        if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
-         if (display[i][j] == P) {
-          // collision BOTTOM
-          if (i == DISPLAY_ROWS-1) {
-            collision |= COLLISION_BOTTOM;
-          }
-          else {
-            if (display[i+1][j] ==  ON) collision |= COLLISION_BOTTOM;
-          }
-          // collision LEFT and collision RIGHT
-          if (j == DISPLAY_COLUMNS - 1) {
-            collision |= COLLISION_RIGHT;
-            if (display[i][j-1] ==  ON) collision |= COLLISION_LEFT;
-          }
-          else if (j == 0) {
-            collision |= COLLISION_LEFT;
-            if (display[i][j+1] ==  ON) collision |= COLLISION_RIGHT;
-          }
-          else {
-            if (display[i][j+1] ==  ON) collision |= COLLISION_RIGHT;
-            if (display[i][j-1] ==  ON) collision |= COLLISION_LEFT;
-          }
-        }
-      }
-    }
-  }
-  return collision;
-}
-/*
-byte check_collision(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
-    for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
-        if (a1[i] == P && a2[i] == ON) {
-            return 1;
+        for (int j = p_j;j <  p_j + BLOCK_SIZE; j++) {
+            if (i < DISPLAY_ROWS )
+                if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
+                    if (display[i][j] == P) {
+                        // collision BOTTOM
+                        if (i == DISPLAY_ROWS-1) {
+                            collision |= COLLISION_BOTTOM;
+                        }
+                        else {
+                            if (display[i+1][j] ==  ON) collision |= COLLISION_BOTTOM;
+                        }
+                        // collision LEFT and collision RIGHT
+                        if (j == DISPLAY_COLUMNS - 1) {
+                            collision |= COLLISION_RIGHT;
+                            if (display[i][j-1] ==  ON) collision |= COLLISION_LEFT;
+                        }
+                        else if (j == 0) {
+                            collision |= COLLISION_LEFT;
+                            if (display[i][j+1] ==  ON) collision |= COLLISION_RIGHT;
+                        }
+                        else {
+                            if (display[i][j+1] ==  ON) collision |= COLLISION_RIGHT;
+                            if (display[i][j-1] ==  ON) collision |= COLLISION_LEFT;
+                        }
+                    }
+                }
         }
     }
-    return 0;
+    return collision;
 }
-*/
 
 void freeze_blocks() {
-   TMR2IE = 0;
+    TMR2IE = 0;
     for (int i = p_i; i < p_i + BLOCK_SIZE; i++) {
         for (int j = p_j; j < p_j + BLOCK_SIZE; j++) {
-          if ((j >= 0) && (j < DISPLAY_COLUMNS))
-            if (display[i][j] == P) {
-                display[i][j] = ON;
-            }
+            if ((j >= 0) && (j < DISPLAY_COLUMNS))
+                if (display[i][j] == P) {
+                    display[i][j] = ON;
+                }
         }
     }
     TMR2IE = 1;
 }
-/*
-byte has_player(byte row[DISPLAY_COLUMNS]) {
-    for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
-        if (row[i] == P) {
-            return 1;
+
+void fall_one_row() {
+    TMR2IE = 0;
+    for (int i = p_i+BLOCK_SIZE-1;i > p_i-1; i--) {
+        for (int j = p_j;j <  p_j+BLOCK_SIZE; j++) {
+            if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
+                if (display[i+1][j] != ON)
+                    display[i+1][j] = display[i][j];
+                if (i == p_i) display[i][j] = 0;
+            }
         }
     }
-    return 0;
-}
-*/
-
-void fall_one_row() {
-  TMR2IE = 0;
-  for (int i = p_i+BLOCK_SIZE-1;i > p_i-1; i--) {
-    for (int j = p_j;j <  p_j+BLOCK_SIZE; j++) {
-       if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
-        if (display[i+1][j] != ON)
-         display[i+1][j] = display[i][j];
-        if (i == p_i) display[i][j] = 0;
-       }
-    }
-  }
-  p_i++;
-  TMR2IE = 1;
+    p_i++;
+    TMR2IE = 1;
 }
 
-/*
-void fall_one_row() {
-    byte last_row[DISPLAY_COLUMNS];
-    byte current_row[DISPLAY_COLUMNS];
-    byte zero_row[DISPLAY_COLUMNS] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-    copy_player(last_row, display[0]);
-    copy_player(display[0], zero_row);
-    for (byte i = 1; i < DISPLAY_ROWS; i++) {
-        copy_player(current_row, display[i]);
-        copy_player(display[i], last_row);
-        copy_player(last_row, current_row);
-    }
-}
-*/
-
-byte full_row(byte row[DISPLAY_COLUMNS]) {
+byte full_row(byte volatile row[DISPLAY_COLUMNS]) {
     for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
         if (row[j] == OFF) {
             return 0;
@@ -267,7 +232,7 @@ void fall_row_until(byte n) {
 }
 
 void clean_full_rows() {
-   TMR2IE = 0;
+    TMR2IE = 0;
     for (byte i = 0; i < DISPLAY_ROWS; i++) {
         if (full_row(display[i])) {
             fall_row_until(i);
@@ -276,22 +241,8 @@ void clean_full_rows() {
     TMR2IE = 1;
 }
 
-/*
-byte check_fall_collision() {
-    for (byte i = 1; i < DISPLAY_ROWS; i++) {
-        if ((i + 1) == DISPLAY_ROWS && has_player(display[i])) {
-            return 1;
-        } else if (check_collision(display[i], display[i+1])) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-*/
-
 void insert_block(Block const p) {
-   TMR2IE = 0;
+    TMR2IE = 0;
     p_i = 0; p_j = 2;
     for (byte i = 0; i < BLOCK_SIZE; i++) {
         for (byte j = 0; j < BLOCK_SIZE; j++) {
@@ -316,7 +267,7 @@ int check_game_over() {
 
 // An Inplace function to rotate a N x N matrix
 // by 90 degrees in anti-clockwise direction
-void rotateMatrix(byte mat[BLOCK_SIZE][BLOCK_SIZE])
+void rotate_matrix(byte mat[BLOCK_SIZE][BLOCK_SIZE])
 {
 
     // Consider all squares one by one
@@ -345,79 +296,26 @@ void rotateMatrix(byte mat[BLOCK_SIZE][BLOCK_SIZE])
 }
 
 void rotate_player() {
- byte window[BLOCK_SIZE][BLOCK_SIZE];
- int i,j,ii,jj;
- for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
-   for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
-      if ((jj >=  0) && (jj < DISPLAY_COLUMNS))
-         window[i][j] = display[ii][jj];
-      else window[i][j] = 0;
-   }
- }
-
- rotateMatrix(window);
-
- for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
-   for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
-      if ((jj >=  0) && (jj < DISPLAY_COLUMNS))
-         display[ii][jj] = window[i][j];
-   }
- }
-}
-/*
-void rotate_player() {
-    byte player_blocks[BLOCK_SIZE][2];
     byte window[BLOCK_SIZE][BLOCK_SIZE];
-    byte  block_count = 0;
-
-    // initialize window and window_coordinantes to 0
-    for (byte i = 0; i < BLOCK_SIZE; i++) {
-        for (byte j = 0; j < BLOCK_SIZE; j++) {
-            window[i][j] = 0;
+    int i,j,ii,jj;
+    for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
+        for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
+            if ((jj >=  0) && (jj < DISPLAY_COLUMNS))
+                window[i][j] = display[ii][jj];
+            else window[i][j] = 0;
         }
     }
 
-    // search for player blocks
-    for (byte i = 0; i < DISPLAY_ROWS; i++) {
-        for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (display[i][j] == P) {
-                player_blocks[block_count][0] = i;
-                player_blocks[block_count][1] = j;
-                block_count++;
-            }
-        }
-    }
+    rotate_matrix(window);
 
-    // get window of blocks {4,4}
-    byte min_i = player_blocks[0][0];
-    byte min_j = player_blocks[0][1];
-    for (byte i = 1; i < BLOCK_SIZE; i++) {
-        if (player_blocks[i][0] < min_i) {
-            min_i = player_blocks[i][0];
-        }
-        if (player_blocks[i][1] < min_j) {
-            min_j = player_blocks[i][1];
-        }
-    }
-
-    for (byte i = 0; i < BLOCK_SIZE; i++) {
-        byte p_i = player_blocks[i][0];
-        byte p_j = player_blocks[i][1];
-        byte w_i = p_i - min_i;
-        byte w_j = p_j - min_j;
-        window[w_i][w_j] = display[p_i][p_j];
-    }
-
-    rotateMatrix(window);
-
-    // write rotated window back
-    for (byte i = 0; i < BLOCK_SIZE; i++) {
-        for (byte j = 0; j < BLOCK_SIZE; j++) {
-            display[i+min_i][j+min_j] = window[i][j];
+    for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
+        for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
+            if ((jj >=  0) && (jj < DISPLAY_COLUMNS))
+                display[ii][jj] = window[i][j];
         }
     }
 }
-*/
+
 void spawn_block() {
     static int counter = 1;
     switch (counter % 7) {
@@ -446,40 +344,6 @@ void spawn_block() {
     counter++;
 }
 
-/*
-byte check_COLLISION_LEFT(void) {
-
-    for (byte i = 0; i < DISPLAY_ROWS; i++) {
-        for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (display[i][j] == P) {
-                if (j == 0) {
-                    return 1;
-                } else if (display[i][j-1] == ON) {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-
-byte check_COLLISION_RIGHT(void) {
-    for (i = 0; i < DISPLAY_ROWS; i++) {
-        for (j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (display[i][j] == P) {
-                if (j == DISPLAY_COLUMNS - 1) {
-                    return 1;
-                } else if (display[i][j+1] == ON) {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    return 0;
-}
-*/
 void move_player_to_left(void) {
     TMR2IE = 0;
     for (byte i = 0; i < DISPLAY_ROWS; i++) {
@@ -526,25 +390,25 @@ void move_player_to_right(void) {
  */
 
 void interrupt isr(void) {
-   if (TMR2IF) {
-      TMR2IF = 0;
-      INHIBIT_PIN = 1;
-      DISPLAY_ROW_PORT = row;
-       if (display[row][col] != OFF ) {
+    if (TMR2IF) {
+        TMR2IF = 0;
+        INHIBIT_PIN = 1;
+        DISPLAY_ROW_PORT = row;
+        if (display[row][col] != OFF ) {
             DISPLAY_COLUMNS_PORT =  ((row & 0b00001000) |  col);
-             INHIBIT_PIN = 0;
+            INHIBIT_PIN = 0;
         }
         col =  (col + 1) &  (DISPLAY_COLUMNS - 1);
-         if (col == 0) {
-             row = (row + 1) & (DISPLAY_ROWS - 1);
+        if (col == 0) {
+            row = (row + 1) & (DISPLAY_ROWS - 1);
         }
-   } else  if (INT0F) { // left button
+    } else  if (INT0F) { // left button
         INT0F = 0;
         key = KEY_LEFT;
 
     } else if (INT1F) { // right button
         INT1F = 0;
-       key = KEY_RIGHT;
+        key = KEY_RIGHT;
     } else if (INT2F) {
         INT2F = 0;
         key = KEY_ROTATE;
@@ -552,82 +416,82 @@ void interrupt isr(void) {
 }
 
 void kbd_manager(void) {
-  byte key_aux = key;
+    byte key_aux = key;
 
-   switch (key_aux) {
-     case KEY_LEFT:
+    switch (key_aux) {
+    case KEY_LEFT:
         if (!(collision_state & COLLISION_LEFT))
-          move_player_to_left();
+            move_player_to_left();
         break;
 
-     case KEY_RIGHT:
+    case KEY_RIGHT:
         if (!(collision_state & COLLISION_RIGHT))
-          move_player_to_right();
-     break;
+            move_player_to_right();
+        break;
 
-     case KEY_ROTATE:
+    case KEY_ROTATE:
         //if (!(collision_state & (COLLISION_RIGHT|COLLISION_LEFT)))
-         rotate_player();
-     break;
+        rotate_player();
+        break;
 
     }
 
-  if (key_aux  == key)
-    key = KEY_NONE;
+    if (key_aux  == key)
+        key = KEY_NONE;
 }
 
 void game_manager() {
-  static byte i,j;
+    static byte i, j;
 
-        // main logic
-       switch (gameState) {
-            case 0:
-               spawn_block();
-               gameState = 1;
-              break;
+    // main logic
+    switch (gameState) {
+    case 0:
+        spawn_block();
+        gameState = 1;
+        break;
 
-            case 1:
-              if (collision_state & COLLISION_BOTTOM) {
-                freeze_blocks();
-                clean_full_rows();
-                if (check_game_over()) {
-                  i = 0; j = 0;
-                  timer = DELAY_TICK_GAME_OVER;
-                  gameState = 3;
-                 } else {
-                  gameState = 0;
-                 }
-              } else {
-                fall_one_row();
-                timer = DELAY_FALL;
-                gameState = 2;
-              }
-              break;
-
-            case 2:
-              if  (!timer)
-               gameState = 1;
-               break;
-
-          case 3:
-             if  (!timer) {
-              timer = DELAY_TICK_GAME_OVER;
-              TMR2IE = 0;
-              display[i][j] = ON;
-              TMR2IE = 1;
-              j++;
-              if  (j  == DISPLAY_COLUMNS) {
-               j = 0;
-               i++;
-               if  (i == DISPLAY_ROWS) {
-                i = 0;
-                clear_display();
+    case 1:
+        if (collision_state & COLLISION_BOTTOM) {
+            freeze_blocks();
+            clean_full_rows();
+            if (check_game_over()) {
+                i = 0; j = 0;
+                timer = DELAY_TICK_GAME_OVER;
+                gameState = 3;
+            } else {
                 gameState = 0;
-               }
-              }
-             }
-            break;
-       }
+            }
+        } else {
+            fall_one_row();
+            timer = DELAY_FALL;
+            gameState = 2;
+        }
+        break;
+
+    case 2:
+        if  (!timer)
+            gameState = 1;
+        break;
+
+    case 3:
+        if  (!timer) {
+            timer = DELAY_TICK_GAME_OVER;
+            TMR2IE = 0;
+            display[i][j] = ON;
+            TMR2IE = 1;
+            j++;
+            if  (j  == DISPLAY_COLUMNS) {
+                j = 0;
+                i++;
+                if  (i == DISPLAY_ROWS) {
+                    i = 0;
+                    clear_display();
+                    gameState = 0;
+                }
+            }
+        }
+        break;
+    }
 }
 
 void init(void) {
@@ -659,31 +523,31 @@ void init(void) {
 
 int main(void) {
 
-  init();
-  clear_display();
-  spawn_block();
+    init();
+    clear_display();
+    spawn_block();
 
-   while (1) {
-    __delay_ms(1);
-    if (state != 2)
-     collision_state = check_collision();
+    while (1) {
+        __delay_ms(1);
+        if (state != 2)
+            collision_state = check_collision();
 
-     switch (state) {
-       case 0:
-        kbd_manager();
-        state++;
-        break;
+        switch (state) {
+        case 0:
+            kbd_manager();
+            state++;
+            break;
 
-       case 1:
-        game_manager();
-        state++;
-        break;
+        case 1:
+            game_manager();
+            state++;
+            break;
 
         case 2:
-         if (timer) timer--;
-         state = 0;
-         break;
-     }
-  }
- return 0;
+            if (timer) timer--;
+            state = 0;
+            break;
+        }
+    }
+    return 0;
 }
