@@ -200,7 +200,7 @@ void freeze_blocks() {
 }
 
 void fall_one_row() {
-    TMR2IE = 0;
+    TMR2IE = 0; // disable timer
     for (int i = p_i + BLOCK_SIZE - 1;i > p_i - 1; i--) {
         for (int j = p_j;j <  p_j+BLOCK_SIZE; j++) {
             if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
@@ -214,7 +214,7 @@ void fall_one_row() {
         }
     }
     p_i++;
-    TMR2IE = 1;
+    TMR2IE = 1; // enable timer
 }
 
 byte full_row(byte volatile row[DISPLAY_COLUMNS]) {
@@ -241,28 +241,27 @@ void fall_row_until(byte n) {
 }
 
 void clean_full_rows() {
-    TMR2IE = 0;
+    TMR2IE = 0; // disable timer
     for (byte i = 0; i < DISPLAY_ROWS; i++) {
         if (full_row(display[i])) {
             fall_row_until(i);
         }
     }
-    TMR2IE = 1;
+    TMR2IE = 1; // enable timer
 }
 
 void insert_block(Block const p) {
-    TMR2IE = 0;
+    TMR2IE = 0; // disable timer
     p_i = 0; p_j = 2;
     for (byte i = 0; i < BLOCK_SIZE; i++) {
         for (byte j = 0; j < BLOCK_SIZE; j++) {
             display[i+p_i][j+p_j] = p[i][j];
         }
     }
-    TMR2IE = 1;
+    TMR2IE = 1; // enable timer
 }
 
 int check_game_over() {
-
     byte prefix = 2;
     for (byte i = 0; i < BLOCK_SIZE; i++) {
         for (byte j = 0; j < BLOCK_SIZE; j++) {
@@ -358,7 +357,7 @@ void spawn_block() {
 }
 
 void move_player_to_left(void) {
-    TMR2IE = 0;
+    TMR2IE = 0; // disable timer
     for (byte i = 0; i < DISPLAY_ROWS; i++) {
         for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
             if (j - 1 >= 0 && display[i][j] == P) {
@@ -370,7 +369,7 @@ void move_player_to_left(void) {
         }
     }
     p_j--;
-    TMR2IE = 1;
+    TMR2IE = 1; // enable timer
 }
 
 void move_player_to_right(void) {
@@ -396,11 +395,6 @@ void move_player_to_right(void) {
     TMR2IE = 1;
 }
 
-/**
- * DANGER: There is a re-entrant problem in this routine.
- *         move_player_to_{left, right} procedures changes the
- *         global variable display (which is changed by other procedures)
- */
 
 void interrupt isr(void) {
     if (TMR2IF) {
