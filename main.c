@@ -146,31 +146,40 @@ byte check_collision() {
 
     for (int i = p_i;i < p_i + BLOCK_SIZE;i++) {
         for (int j = p_j;j <  p_j + BLOCK_SIZE; j++) {
-            if (i < DISPLAY_ROWS )
+            if (i < DISPLAY_ROWS ) {
                 if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
                     if (display[i][j] == P) {
                         // collision BOTTOM
                         if (i == DISPLAY_ROWS-1) {
                             collision |= COLLISION_BOTTOM;
                         }
-                        else {
-                            if (display[i+1][j] ==  ON) collision |= COLLISION_BOTTOM;
+                        else if (display[i+1][j] ==  ON) {
+                            collision |= COLLISION_BOTTOM;
                         }
                         // collision LEFT and collision RIGHT
                         if (j == DISPLAY_COLUMNS - 1) {
                             collision |= COLLISION_RIGHT;
-                            if (display[i][j-1] ==  ON) collision |= COLLISION_LEFT;
+                            if (display[i][j-1] ==  ON) {
+                                collision |= COLLISION_LEFT;
+                            }
                         }
                         else if (j == 0) {
                             collision |= COLLISION_LEFT;
-                            if (display[i][j+1] ==  ON) collision |= COLLISION_RIGHT;
+                            if (display[i][j+1] ==  ON) {
+                                collision |= COLLISION_RIGHT;
+                            }
                         }
                         else {
-                            if (display[i][j+1] ==  ON) collision |= COLLISION_RIGHT;
-                            if (display[i][j-1] ==  ON) collision |= COLLISION_LEFT;
+                            if (display[i][j+1] ==  ON) {
+                                collision |= COLLISION_RIGHT;
+                            }
+                            if (display[i][j-1] ==  ON) {
+                                collision |= COLLISION_LEFT;
+                            }
                         }
                     }
                 }
+            }
         }
     }
     return collision;
@@ -180,10 +189,11 @@ void freeze_blocks() {
     TMR2IE = 0;
     for (int i = p_i; i < p_i + BLOCK_SIZE; i++) {
         for (int j = p_j; j < p_j + BLOCK_SIZE; j++) {
-            if ((j >= 0) && (j < DISPLAY_COLUMNS))
+            if ((j >= 0) && (j < DISPLAY_COLUMNS)) {
                 if (display[i][j] == P) {
                     display[i][j] = ON;
                 }
+            }
         }
     }
     TMR2IE = 1;
@@ -191,12 +201,15 @@ void freeze_blocks() {
 
 void fall_one_row() {
     TMR2IE = 0;
-    for (int i = p_i+BLOCK_SIZE-1;i > p_i-1; i--) {
+    for (int i = p_i + BLOCK_SIZE - 1;i > p_i - 1; i--) {
         for (int j = p_j;j <  p_j+BLOCK_SIZE; j++) {
             if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
-                if (display[i+1][j] != ON)
+                if (display[i+1][j] != ON) {
                     display[i+1][j] = display[i][j];
-                if (i == p_i) display[i][j] = 0;
+                }
+                if (i == p_i) {
+                    display[i][j] = 0;
+                }
             }
         }
     }
@@ -296,9 +309,12 @@ void rotate_player() {
     int i,j,ii,jj;
     for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
         for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
-            if ((jj >=  0) && (jj < DISPLAY_COLUMNS))
+            if ((jj >=  0) && (jj < DISPLAY_COLUMNS)) {
                 window[i][j] = display[ii][jj];
-            else window[i][j] = 0;
+            }
+            else {
+                window[i][j] = 0;
+            }
         }
     }
 
@@ -306,8 +322,9 @@ void rotate_player() {
 
     for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
         for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
-            if ((jj >=  0) && (jj < DISPLAY_COLUMNS))
+            if ((jj >=  0) && (jj < DISPLAY_COLUMNS)) {
                 display[ii][jj] = window[i][j];
+            }
         }
     }
 }
@@ -344,7 +361,7 @@ void move_player_to_left(void) {
     TMR2IE = 0;
     for (byte i = 0; i < DISPLAY_ROWS; i++) {
         for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (j-1 >= 0 && display[i][j] == P) {
+            if (j - 1 >= 0 && display[i][j] == P) {
                 display[i][j-1] = display[i][j];
                 display[i][j] = 0;
             } else {
@@ -398,7 +415,7 @@ void interrupt isr(void) {
         if (col == 0) {
             row = (row + 1) & (DISPLAY_ROWS - 1);
         }
-    } else  if (INT0F) { // left button
+    } else if (INT0F) { // left button
         INT0F = 0;
         key = KEY_LEFT;
 
@@ -416,13 +433,15 @@ void kbd_manager(void) {
 
     switch (key_aux) {
     case KEY_LEFT:
-        if (!(collision_state & COLLISION_LEFT))
+        if (!(collision_state & COLLISION_LEFT)) {
             move_player_to_left();
+        }
         break;
 
     case KEY_RIGHT:
-        if (!(collision_state & COLLISION_RIGHT))
+        if (!(collision_state & COLLISION_RIGHT)) {
             move_player_to_right();
+        }
         break;
 
     case KEY_ROTATE:
@@ -432,8 +451,9 @@ void kbd_manager(void) {
 
     }
 
-    if (key_aux  == key)
+    if (key_aux  == key) {
         key = KEY_NONE;
+    }
 }
 
 void game_manager() {
@@ -465,8 +485,9 @@ void game_manager() {
         break;
 
     case 2:
-        if  (!timer)
             gameState = 1;
+        if (!timer) {
+        }
         break;
 
     case 3:
