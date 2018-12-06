@@ -134,14 +134,6 @@ inline void clear_display() {
 }
 
 // a1 <- a2
-void copy_player(byte a1[DISPLAY_COLUMNS], byte a2[DISPLAY_COLUMNS]) {
-    for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
-        if (a2[i] == P) {
-            a1[i] = a2[i];
-        }
-    }
-}
-
 void copy_array(byte volatile a1[DISPLAY_COLUMNS], byte volatile a2[DISPLAY_COLUMNS]) {
     for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
         a1[i] = a2[i];
