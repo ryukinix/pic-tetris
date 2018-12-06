@@ -23,8 +23,15 @@
 
 typedef unsigned char byte;
 
-
 typedef byte Block[BLOCK_SIZE][BLOCK_SIZE];
+
+// global variables
+byte volatile display[DISPLAY_ROWS][DISPLAY_COLUMNS];
+byte row,col;
+int p_i,p_j;
+volatile byte key;
+byte state,game_state,collision_state;
+unsigned int timer;
 
 enum PixelState {
     OFF = 0,
@@ -99,13 +106,6 @@ Block const BLOCK_EMPTY = {
     {0, 0, 0},
     {0, 0, 0},
 };
-
-byte volatile display[DISPLAY_ROWS][DISPLAY_COLUMNS];
-byte row,col;
-int p_i,p_j;
-volatile byte key;
-byte state,gameState,collision_state;
-unsigned int timer;
 
 #define  disable_interrupt() { INTCONbits.GIE = 0; }
 
