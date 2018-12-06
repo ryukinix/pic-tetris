@@ -12,8 +12,9 @@ simulation are provided for Proteus SPICE Software (v8.6).
 - [x] Basic collision system
 - [x] Pieces of tetris
 - [x] Full row detection & cleaning
-- [ ] Piece rotation algorithm & input button
+- [x] Block rotation algorithm & input button
 - [ ] RNG to make piece selection be random
 
-# Author
-Manoel Vilela
+# Authors
++ [Manoel Vilela](https://github.com/ryukinix)
++ [Marcelo M. S. Souza](https://github.com/mmssouza)
