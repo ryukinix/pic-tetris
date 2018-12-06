@@ -125,11 +125,11 @@ void set_display(byte value) {
     TMR2IE = 1;
 }
 
-void fill_display() {
+inline void fill_display() {
     set_display(1);
 }
 
-void clear_display() {
+inline void clear_display() {
     set_display(0);
 }
 
