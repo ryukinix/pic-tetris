@@ -107,9 +107,13 @@ Block const BLOCK_EMPTY = {
     {0, 0, 0},
 };
 
-#define  disable_interrupt() { INTCONbits.GIE = 0; }
+inline void disable_interrupt() {
+    INTCONbits.GIE = 0;
+}
 
-#define enable_interrupt() { INTCONbits.GIE = 1; }
+inline void enable_interrupt() {
+    INTCONbits.GIE = 1;
+}
 
 void set_display(byte value) {
     TMR2IE = 0;
