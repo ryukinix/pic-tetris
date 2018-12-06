@@ -460,10 +460,10 @@ void game_manager() {
     static byte i, j;
 
     // main logic
-    switch (gameState) {
+    switch (game_state) {
     case 0:
         spawn_block();
-        gameState = 1;
+        game_state = 1;
         break;
 
     case 1:
@@ -473,20 +473,20 @@ void game_manager() {
             if (check_game_over()) {
                 i = 0; j = 0;
                 timer = DELAY_TICK_GAME_OVER;
-                gameState = 3;
+                game_state = 3;
             } else {
-                gameState = 0;
+                game_state = 0;
             }
         } else {
             fall_one_row();
             timer = DELAY_FALL;
-            gameState = 2;
+            game_state = 2;
         }
         break;
 
     case 2:
-            gameState = 1;
         if (!timer) {
+            game_state = 1;
         }
         break;
 
@@ -503,7 +503,7 @@ void game_manager() {
                 if  (i == DISPLAY_ROWS) {
                     i = 0;
                     clear_display();
-                    gameState = 0;
+                    game_state = 0;
                 }
             }
         }
@@ -529,7 +529,7 @@ void init(void) {
     row = 0;
     col = 0;
     state = 0;
-    gameState = 1;
+    game_state = 1;
     timer = 0;
     T2CONbits.TMR2ON = 1; // Ativa contagem do timer 2
     INTCONbits.GIE = 1;     // Habilita interrupções globalmente
