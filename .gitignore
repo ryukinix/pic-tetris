@@ -5,6 +5,7 @@
 *.elf
 *.hex
 *.hxl
+*.cof
 *.p1
 *.pre
 *.sdb
