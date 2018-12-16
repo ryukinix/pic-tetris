@@ -7,6 +7,7 @@
  */
 
 #include "18f4550.h"
+#include <stdlib.h>
 #include <xc.h>
 
 #define _XTAL_FREQ 16000000
@@ -14,12 +15,17 @@
 #define DISPLAY_COLUMNS 8
 #define BLOCK_SIZE 3
 #define DISPLAY_COLUMNS_PORT PORTD
-#define INHIBIT_PIN   PORTDbits.RD4
+#define INHIBIT_PIN PORTDbits.RD4
+#define KEY_LEFT_PIN PORTBbits.RB0
+#define KEY_RIGHT_PIN PORTBbits.RB1
+#define KEY_ROTATE_PIN PORTBbits.RB2
 #define DISPLAY_ROW_PORT PORTA
-#define DELAY_TICK 250
+#define DELAY_TICK 255
 #define DELAY_TICK_GAME_OVER 10
 #define DELAY_FALL 50
-
+#define DELAY_KEY_DEBOUNCE 30
+#define DELAY_KEY_REPEAT 20
+#define BLOCK_NUM 7
 
 typedef unsigned char byte;
 
@@ -27,11 +33,14 @@ typedef byte Block[BLOCK_SIZE][BLOCK_SIZE];
 
 // global variables
 byte volatile display[DISPLAY_ROWS][DISPLAY_COLUMNS];
-byte row,col;
-int p_i,p_j;
-volatile byte key;
-byte state,game_state,collision_state;
+byte row, col;
+int p_i, p_j;
+byte state, game_state, collision_state;
 unsigned int timer;
+
+byte seed_idx;
+byte seed[4];
+byte current_block;
 
 enum PixelState {
     OFF = 0,
@@ -41,9 +50,9 @@ enum PixelState {
 
 enum KeyState {
     KEY_NONE = 0,
-    KEY_RIGHT,
-    KEY_LEFT,
-    KEY_ROTATE,
+    KEY_LEFT = 0x01,
+    KEY_RIGHT = 0x02,
+    KEY_ROTATE = 0x04,
 };
 
 enum Collisions {
@@ -51,6 +60,16 @@ enum Collisions {
     COLLISION_LEFT = 0x01,
     COLLISION_RIGHT = 0x02,
     COLLISION_BOTTOM = 0x04,
+};
+
+enum Block_id {
+    T,
+    L1,
+    L2,
+    O,
+    S,
+    Z,
+    I,
 };
 
 Block const BLOCK_T = {
@@ -107,13 +126,18 @@ Block const BLOCK_EMPTY = {
     {0, 0, 0},
 };
 
-inline void disable_interrupt() {
-    INTCONbits.GIE = 0;
-}
+/*const Block *Blocks[] =    { BLOCK_T,
+  BLOCK_L1,
+  BLOCK_L2,
+  BLOCK_O,
+  BLOCK_S,
+  BLOCK_Z,
+  BLOCK_I };
 
-inline void enable_interrupt() {
-    INTCONbits.GIE = 1;
-}
+*/
+inline void disable_interrupt() { INTCONbits.GIE = 0; }
+
+inline void enable_interrupt() { INTCONbits.GIE = 1; }
 
 void set_display(byte value) {
     TMR2IE = 0;
@@ -125,55 +149,41 @@ void set_display(byte value) {
     TMR2IE = 1;
 }
 
-inline void fill_display() {
-    set_display(1);
-}
+inline void fill_display() { set_display(1); }
 
-inline void clear_display() {
-    set_display(0);
-}
-
-// a1 <- a2
-void copy_array(byte volatile a1[DISPLAY_COLUMNS], byte volatile a2[DISPLAY_COLUMNS]) {
-    for (byte i = 0; i < DISPLAY_COLUMNS; i++) {
-        a1[i] = a2[i];
-    }
-}
-
+inline void clear_display() { set_display(0); }
 
 byte check_collision() {
     byte collision = COLLISION_NONE;
 
-    for (int i = p_i;i < p_i + BLOCK_SIZE;i++) {
-        for (int j = p_j;j <  p_j + BLOCK_SIZE; j++) {
-            if (i < DISPLAY_ROWS ) {
-                if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
+    for (int i = p_i; i < p_i + BLOCK_SIZE; i++) {
+        for (int j = p_j; j < p_j + BLOCK_SIZE; j++) {
+            if (i < DISPLAY_ROWS) {
+                if ((j >= 0) && (j < DISPLAY_COLUMNS)) {
                     if (display[i][j] == P) {
                         // collision BOTTOM
-                        if (i == DISPLAY_ROWS-1) {
+                        if (i == DISPLAY_ROWS - 1) {
+                            collision |= COLLISION_BOTTOM;
+                        } else if (display[i + 1][j] == ON) {
                             collision |= COLLISION_BOTTOM;
                         }
-                        else if (display[i+1][j] ==  ON) {
-                            collision |= COLLISION_BOTTOM;
-                        }
-                        // collision LEFT and collision RIGHT
+                        // collision LEFT and collision WALL (RIGHT)
                         if (j == DISPLAY_COLUMNS - 1) {
                             collision |= COLLISION_RIGHT;
-                            if (display[i][j-1] ==  ON) {
+                            if (display[i][j - 1] == ON) {
                                 collision |= COLLISION_LEFT;
                             }
-                        }
+                        } // collision LEFT (WALL) and collision RIGHT
                         else if (j == 0) {
                             collision |= COLLISION_LEFT;
-                            if (display[i][j+1] ==  ON) {
+                            if (display[i][j + 1] == ON) {
                                 collision |= COLLISION_RIGHT;
                             }
-                        }
-                        else {
-                            if (display[i][j+1] ==  ON) {
+                        } else {
+                            if (display[i][j + 1] == ON) {
                                 collision |= COLLISION_RIGHT;
                             }
-                            if (display[i][j-1] ==  ON) {
+                            if (display[i][j - 1] == ON) {
                                 collision |= COLLISION_LEFT;
                             }
                         }
@@ -201,14 +211,14 @@ void freeze_blocks() {
 
 void fall_one_row() {
     TMR2IE = 0; // disable timer
-    for (int i = p_i + BLOCK_SIZE - 1;i > p_i - 1; i--) {
-        for (int j = p_j;j <  p_j+BLOCK_SIZE; j++) {
-            if ((j >=  0) && (j < DISPLAY_COLUMNS)) {
-                if (display[i+1][j] != ON) {
-                    display[i+1][j] = display[i][j];
-                }
-                if (i == p_i) {
-                    display[i][j] = 0;
+    for (int i = p_i + BLOCK_SIZE - 1; i > p_i - 1; i--) {
+        for (int j = p_j; j < p_j + BLOCK_SIZE; j++) {
+            if ((j >= 0) && (j < DISPLAY_COLUMNS)) {
+                if (display[i + 1][j] != ON) {
+                    display[i + 1][j] = display[i][j];
+                    if (i == p_i) {
+                        display[i][j] = 0;
+                    }
                 }
             }
         }
@@ -227,133 +237,119 @@ byte full_row(byte volatile row[DISPLAY_COLUMNS]) {
 }
 
 void fall_row_until(byte n) {
-    byte last_row[DISPLAY_COLUMNS];
-    byte current_row[DISPLAY_COLUMNS];
-    byte zero_row[DISPLAY_COLUMNS] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-    copy_array(last_row, display[0]);
-    copy_array(display[0], zero_row);
-    for (byte i = 1; i <= n; i++) {
-        copy_array(current_row, display[i]);
-        copy_array(display[i], last_row);
-        copy_array(last_row, current_row);
-    }
+    TMR2IE = 0;
+    for (byte i = n; i > 0; i--)
+        for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
+            display[i][j] = display[i - 1][j];
+        }
+    TMR2IE = 1;
 }
 
 void clean_full_rows() {
-    TMR2IE = 0; // disable timer
-    for (byte i = 0; i < DISPLAY_ROWS; i++) {
+    for (byte i = 1; i < DISPLAY_ROWS; i++) {
         if (full_row(display[i])) {
             fall_row_until(i);
         }
     }
-    TMR2IE = 1; // enable timer
 }
 
 void insert_block(Block const p) {
     TMR2IE = 0; // disable timer
-    p_i = 0; p_j = 2;
+    p_i = 0;
+    p_j = 2;
     for (byte i = 0; i < BLOCK_SIZE; i++) {
         for (byte j = 0; j < BLOCK_SIZE; j++) {
-            display[i+p_i][j+p_j] = p[i][j];
+            display[i + p_i][j + p_j] = p[i][j];
         }
     }
     TMR2IE = 1; // enable timer
 }
 
-int check_game_over() {
-    byte prefix = 2;
-    for (byte i = 0; i < BLOCK_SIZE; i++) {
-        for (byte j = 0; j < BLOCK_SIZE; j++) {
-            if (display[i][j+prefix] == ON) {
-                return 1;
-            }
-        }
-    }
-    return 0;
+inline byte check_game_over() {
+    return ((p_i == 0) && (collision_state & COLLISION_BOTTOM));
 }
 
 // An Inplace function to rotate a N x N matrix
 // by 90 degrees in anti-clockwise direction
-void rotate_matrix(byte mat[BLOCK_SIZE][BLOCK_SIZE])
-{
+void rotate_matrix(byte mat[BLOCK_SIZE][BLOCK_SIZE]) {
 
     // Consider all squares one by one
-    for (byte x = 0; x < 2; x++)
-    {
+    for (byte x = 0; x < 2; x++) {
         // Consider elements in group of 4 in
         // current square
-        for (byte y = x; y < BLOCK_SIZE-x-1; y++)
-        {
+        for (byte y = x; y < BLOCK_SIZE - x - 1; y++) {
             // store current cell in temp variable
             byte temp = mat[x][y];
 
             // move values from right to top
-            mat[x][y] = mat[y][BLOCK_SIZE-1-x];
+            mat[x][y] = mat[y][BLOCK_SIZE - 1 - x];
 
             // move values from bottom to right
-            mat[y][BLOCK_SIZE-1-x] = mat[BLOCK_SIZE-1-x][BLOCK_SIZE-1-y];
+            mat[y][BLOCK_SIZE - 1 - x] = mat[BLOCK_SIZE - 1 - x][BLOCK_SIZE - 1 - y];
 
             // move values from left to bottom
-            mat[BLOCK_SIZE-1-x][BLOCK_SIZE-1-y] = mat[BLOCK_SIZE-1-y][x];
+            mat[BLOCK_SIZE - 1 - x][BLOCK_SIZE - 1 - y] = mat[BLOCK_SIZE - 1 - y][x];
 
             // assign temp to left
-            mat[BLOCK_SIZE-1-y][x] = temp;
+            mat[BLOCK_SIZE - 1 - y][x] = temp;
         }
     }
 }
 
 void rotate_player() {
     byte window[BLOCK_SIZE][BLOCK_SIZE];
-    int i,j,ii,jj;
-    for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
-        for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
-            if ((jj >=  0) && (jj < DISPLAY_COLUMNS)) {
+    int i, j, ii, jj;
+
+    if (current_block == O)
+        return;
+    for (i = 0, ii = p_i; i < BLOCK_SIZE; i++, ii++) {
+        for (j = 0, jj = p_j; j < BLOCK_SIZE; j++, jj++) {
+            if ((jj >= 0) && (jj < DISPLAY_COLUMNS)) {
                 window[i][j] = display[ii][jj];
-            }
-            else {
+            } else {
                 window[i][j] = 0;
             }
         }
     }
 
     rotate_matrix(window);
-
-    for (i = 0, ii = p_i; i < BLOCK_SIZE; i++,ii++) {
-        for (j = 0, jj = p_j; j < BLOCK_SIZE; j++,jj++) {
-            if ((jj >=  0) && (jj < DISPLAY_COLUMNS)) {
+    TMR2IE = 0;
+    for (i = 0, ii = p_i; i < BLOCK_SIZE; i++, ii++) {
+        for (j = 0, jj = p_j; j < BLOCK_SIZE; j++, jj++) {
+            if ((jj >= 0) && (jj < DISPLAY_COLUMNS)) {
                 display[ii][jj] = window[i][j];
             }
         }
     }
+    TMR2IE = 1;
 }
 
 void spawn_block() {
-    static int counter = 1;
-    switch (counter % 7) {
-    case 0:
+    current_block = rand() % BLOCK_NUM;
+
+    switch (current_block) {
+    case I:
         insert_block(BLOCK_I);
         break;
-    case 1:
+    case T:
         insert_block(BLOCK_T);
         break;
-    case 2:
+    case S:
         insert_block(BLOCK_S);
         break;
-    case 3:
+    case L1:
         insert_block(BLOCK_L1);
         break;
-    case 4:
+    case Z:
         insert_block(BLOCK_Z);
         break;
-    case 5:
+    case O:
         insert_block(BLOCK_O);
         break;
-    case 6:
+    case L2:
         insert_block(BLOCK_L2);
         break;
     }
-    counter++;
 }
 
 void move_player_to_left(void) {
@@ -361,7 +357,7 @@ void move_player_to_left(void) {
     for (byte i = 0; i < DISPLAY_ROWS; i++) {
         for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
             if (j - 1 >= 0 && display[i][j] == P) {
-                display[i][j-1] = display[i][j];
+                display[i][j - 1] = display[i][j];
                 display[i][j] = 0;
             } else {
                 display[i][j] = display[i][j];
@@ -380,8 +376,8 @@ void move_player_to_right(void) {
             new_row[j] = OFF;
         }
         for (byte j = 0; j < DISPLAY_COLUMNS; j++) {
-            if (j+1 < DISPLAY_COLUMNS && display[i][j] == P) {
-                new_row[j+1] = display[i][j];
+            if (j + 1 < DISPLAY_COLUMNS && display[i][j] == P) {
+                new_row[j + 1] = display[i][j];
             } else if (new_row[j] != P) {
                 new_row[j] = display[i][j];
             }
@@ -395,37 +391,56 @@ void move_player_to_right(void) {
     TMR2IE = 1;
 }
 
+void seed_updt(byte val, byte refresh) {
+    seed[seed_idx] = val;
+    seed_idx = ++seed_idx & 0x03;
 
-void interrupt isr(void) {
-    if (TMR2IF) {
-        TMR2IF = 0;
-        INHIBIT_PIN = 1;
-        DISPLAY_ROW_PORT = row;
-        if (display[row][col] != OFF ) {
-            DISPLAY_COLUMNS_PORT =  ((row & 0b00001000) |  col);
-            INHIBIT_PIN = 0;
-        }
-        col =  (col + 1) &  (DISPLAY_COLUMNS - 1);
-        if (col == 0) {
-            row = (row + 1) & (DISPLAY_ROWS - 1);
-        }
-    } else if (INT0F) { // left button
-        INT0F = 0;
-        key = KEY_LEFT;
+    long *seed_ptr = (long *)seed;
 
-    } else if (INT1F) { // right button
-        INT1F = 0;
-        key = KEY_RIGHT;
-    } else if (INT2F) {
-        INT2F = 0;
-        key = KEY_ROTATE;
-    }
+    if (refresh)
+        srand(*seed_ptr);
 }
 
 void kbd_manager(void) {
-    byte key_aux = key;
 
-    switch (key_aux) {
+    static byte key_ant = KEY_NONE;
+    static byte key = KEY_NONE;
+    static byte key_cmd = KEY_NONE;
+
+    static byte key_tmr1 = 0, key_tmr2 = 0;
+    static bit key_flag;
+
+    byte aux = PORTB & 0x07;
+
+    if (aux == key_ant) {
+        if (++key_tmr1 > DELAY_KEY_DEBOUNCE) {
+            key_tmr1 = DELAY_KEY_DEBOUNCE;
+            key = aux;
+        } else {
+            key = KEY_NONE;
+        }
+    } else {
+        key_tmr1 = 0;
+        key = KEY_NONE;
+    }
+
+    key_ant = aux;
+
+    if (!key) {
+        key_flag = 1;
+        key_tmr2 = 0;
+        key_cmd = KEY_NONE;
+    } else if (key_flag) {
+        seed_updt(TMR2, 0);
+        key_cmd = key;
+        key_flag = 0;
+    } else if (++key_tmr2 > DELAY_KEY_REPEAT) {
+        key_tmr2 = 0;
+        key_cmd = key;
+    } else
+        key_cmd = KEY_NONE;
+
+    switch (key_cmd) {
     case KEY_LEFT:
         if (!(collision_state & COLLISION_LEFT)) {
             move_player_to_left();
@@ -439,19 +454,19 @@ void kbd_manager(void) {
         break;
 
     case KEY_ROTATE:
-        //if (!(collision_state & (COLLISION_RIGHT|COLLISION_LEFT)))
-        rotate_player();
+
+        if (!(collision_state & (COLLISION_LEFT | COLLISION_RIGHT))) {
+            rotate_player();
+        }
         break;
-
     }
 
-    if (key_aux  == key) {
-        key = KEY_NONE;
-    }
+    key_cmd = KEY_NONE;
 }
 
 void game_manager() {
     static byte i, j;
+    static byte one_time = 1;
 
     // main logic
     switch (game_state) {
@@ -461,16 +476,19 @@ void game_manager() {
         break;
 
     case 1:
-        if (collision_state & COLLISION_BOTTOM) {
+        if (check_game_over()) { // implies COLLISION_BOTTOM && p_i == 0
+            i = 0;
+            j = 0;
+            seed_updt(TMR2, 1);
+            timer = DELAY_TICK_GAME_OVER;
+            game_state = 3;
+
+        } else if (collision_state & COLLISION_BOTTOM) {
+            seed_updt(TMR2, one_time);
+            one_time = 0;
             freeze_blocks();
             clean_full_rows();
-            if (check_game_over()) {
-                i = 0; j = 0;
-                timer = DELAY_TICK_GAME_OVER;
-                game_state = 3;
-            } else {
-                game_state = 0;
-            }
+            game_state = 0;
         } else {
             fall_one_row();
             timer = DELAY_FALL;
@@ -485,16 +503,16 @@ void game_manager() {
         break;
 
     case 3:
-        if  (!timer) {
+        if (!timer) {
             timer = DELAY_TICK_GAME_OVER;
             TMR2IE = 0;
             display[i][j] = ON;
             TMR2IE = 1;
             j++;
-            if  (j  == DISPLAY_COLUMNS) {
+            if (j == DISPLAY_COLUMNS) {
                 j = 0;
                 i++;
-                if  (i == DISPLAY_ROWS) {
+                if (i == DISPLAY_ROWS) {
                     i = 0;
                     clear_display();
                     game_state = 0;
@@ -512,30 +530,31 @@ void init(void) {
     TRISA = 0xf0;
     TRISBbits.RB0 = 1;
     TRISBbits.RB1 = 1;
+    TRISBbits.RB2 = 1;
     T2CONbits.T2CKPS = 0b00;   // PRESCALER
     T2CONbits.TOUTPS = 0b0011; // POSTSCALER
     PR2 = DELAY_TICK;
-    INTCONbits.INT0IE = 1;  // Habilita interrupção INT0
-    INTCON3bits.INT1IE = 1; // Habilita interrupção INT1
-    INTCON3bits.INT2IE = 1; // Habilitar interrupção INT2
     TMR2IE = 1; // Ativa interrupção do timer 2
-    key = KEY_NONE;
     row = 0;
     col = 0;
     state = 0;
     game_state = 1;
     timer = 0;
+    INTCONbits.GIE = 1;   // Habilita interrupções globalmente
+    INTCONbits.PEIE = 1;  // Habilita int. dos periféricos
     T2CONbits.TMR2ON = 1; // Ativa contagem do timer 2
-    INTCONbits.GIE = 1;     // Habilita interrupções globalmente
-    INTCONbits.PEIE = 1;    // Habilita int. dos periféricos
 
+    for (byte i = 0; i < 4; i++) {
+        __delay_us(10);
+        seed_updt(TMR2, 0);
+    }
 }
-
 
 int main(void) {
 
     init();
     clear_display();
+    seed_updt(TMR2, 1);
     spawn_block();
 
     while (1) {
@@ -555,10 +574,27 @@ int main(void) {
             break;
 
         case 2:
-            if (timer) timer--;
+            if (timer)
+                timer--;
             state = 0;
             break;
         }
     }
     return 0;
+}
+
+void interrupt isr(void) {
+    if (TMR2IF) {
+        TMR2IF = 0;
+        INHIBIT_PIN = 1;
+        DISPLAY_ROW_PORT = row;
+        if (display[row][col] != OFF) {
+            DISPLAY_COLUMNS_PORT = ((row & 0b00001000) | col);
+            INHIBIT_PIN = 0;
+        }
+        col = (col + 1) & (DISPLAY_COLUMNS - 1);
+        if (col == 0) {
+            row = (row + 1) & (DISPLAY_ROWS - 1);
+        }
+    }
 }
