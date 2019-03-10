@@ -135,9 +135,13 @@ Block const BLOCK_EMPTY = {
   BLOCK_I };
 
 */
-inline void disable_interrupt() { INTCONbits.GIE = 0; }
+inline void disable_interrupt() {
+    INTCONbits.GIE = 0;
+}
 
-inline void enable_interrupt() { INTCONbits.GIE = 1; }
+inline void enable_interrupt() {
+    INTCONbits.GIE = 1;
+}
 
 void set_display(byte value) {
     TMR2IE = 0;
@@ -412,6 +416,11 @@ void kbd_manager(void) {
 
     byte aux = PORTB & 0x07;
 
+    // this avoid key rotate repeat, whic is a undesired behavior
+    if ((aux == KEY_ROTATE) && (aux == key)) {
+        return;
+    }
+
     if (aux == key_ant) {
         if (++key_tmr1 > DELAY_KEY_DEBOUNCE) {
             key_tmr1 = DELAY_KEY_DEBOUNCE;
@@ -437,8 +446,9 @@ void kbd_manager(void) {
     } else if (++key_tmr2 > DELAY_KEY_REPEAT) {
         key_tmr2 = 0;
         key_cmd = key;
-    } else
+    } else {
         key_cmd = KEY_NONE;
+    }
 
     switch (key_cmd) {
     case KEY_LEFT:
@@ -454,7 +464,6 @@ void kbd_manager(void) {
         break;
 
     case KEY_ROTATE:
-
         if (!(collision_state & (COLLISION_LEFT | COLLISION_RIGHT))) {
             rotate_player();
         }
