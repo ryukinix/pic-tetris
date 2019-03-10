@@ -1,0 +1,6 @@
+#sources
+*.c text diff=c
+*.h text diff=c
+
+#binaries
+*.pdsprj binary
